@@ -14,7 +14,11 @@ module VanillaNested
     # @param tag_attributes [Hash<attribute, value>] hash with attribute,value pairs for the html tag
     # @return [String] link tag
     def link_to_add_nested(form, association, container_selector, link_text: nil, link_classes: '', insert_method: :append, partial: nil, partial_form_variable: :form, tag: 'a', tag_attributes: {}, &link_content)
-      association_class = form.object.class.reflections[association.to_s].klass
+      association_class = if form.object.class.respond_to?(:reflections)
+                      form.object.class.reflections[association.to_s].klass
+                    else
+                      form.object.public_send(association.to_sym)[0]&.model&.class || association.to_s.singularize.classify.constantize
+                    end    
       object = association_class.new
 
       partial_name = partial || "#{association_class.name.underscore}_fields"
@@ -34,7 +38,11 @@ module VanillaNested
         'method-for-insert': method_for_insert
       }
 
-      nested_options = form.object.class.nested_attributes_options[association.to_sym]
+      nested_options = if form.object.class.respond_to?(:nested_attributes_options)
+                         form.object.class.nested_attributes_options[association.to_sym]
+                       else
+                         {}
+                       end
       data['limit'] = nested_options[:limit] if nested_options[:limit]
 
       attributes = tag_attributes
